@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>TreeCreator</id>
+    <title>Tree Creator</title>
+    <version>1.0.0</version>
+    <authors>Shady Nagy</authors>
+    <owners>Shady Nagy</owners>
+
+    <description>
+      Create Tree from folders and files.
+    </description>
+
+    <summary>
+			A .NET library to create Tree from folders and files.
+		</summary>
+
+    <language>en-US</language>
+    <license type="expression">MIT</license>
+
+    <repository type="git" url="https://github.com/ShadyNagy/TreeCreator" />
+    <projectUrl>https://github.com/ShadyNagy/TreeCreator</projectUrl>
+    <documentation>https://github.com/ShadyNagy/TreeCreator/wiki</documentation>
+    <issueTracker>https://github.com/ShadyNagy/TreeCreator/issues</issueTracker>
+
+    <releaseNotes>
+			- Initial release of TreeCreator.
+		</releaseNotes>
+
+    <tags>TreeCreator, Tree, Files, Folders, Folders Structure, Files Structure, .NET</tags>
+
+    <icon>icon.png</icon>
+    <copyright>Copyright 2019 - 2025 (c) Shady Nagy. All rights reserved.</copyright>
+    <readme>README.md</readme>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Dependencies -->
+    <dependencies>
+      <group targetFramework="net8.0">
+      </group>
+    </dependencies>
+
+    <RequireLicenseAcceptance>false</RequireLicenseAcceptance>
+  </metadata>
+
+  <files>
+    <file src="src\TreeCreator\bin\Release\net80\TreeCreator.dll" target="lib\net8.0" />
+    <file src="icon.png" />
+    <file src="README.md" />
+    <file src="LICENSE" />
+  </files>
+</package>

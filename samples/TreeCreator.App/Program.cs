@@ -25,9 +25,7 @@ internal class Program
 		try
 		{
 			var tree = TreeCreatorFactory.Create()
-				.ExcludeDirectories("bin", "obj", "Debug", "Release", ".vs", "packages", "node_modules", "ClaudeSample", "ClaudeSampleWeb", 
-					"CodeDocumenter.Cli", "CodeDocumenter.CliExample", "HtmlToDocx.Core", "HtmlToDocx.Sample", "MarkdownToPdf", "SmartHtml",
-					"TreeCreator.App", "TreeCreator", "tests")
+				.ExcludeDirectories("bin", "obj", "Debug", "Release", ".vs", "packages", "node_modules")
 				.ExcludeExtensions(".dll", ".exe", ".pdb", ".cache", ".suo", ".user", ".baml", ".resources")
 				.Generate(directoryPath);
 
@@ -53,6 +51,6 @@ internal class Program
 			return args[0];
 
 		Console.Write("Enter directory path: ");
-		return Console.ReadLine();
+		return Console.ReadLine()!;
 	}
 }

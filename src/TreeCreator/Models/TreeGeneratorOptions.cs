@@ -1,4 +1,7 @@
-﻿namespace TreeCreator.Models;
+﻿using System;
+using System.Collections.Generic;
+
+namespace TreeCreator.Models;
 
 /// <summary>
 /// Options for configuring the tree generator.

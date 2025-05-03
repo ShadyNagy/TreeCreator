@@ -26,5 +26,5 @@ public interface ITreeCreator
 	/// </summary>
 	/// <param name="rootPath">The root path to generate the tree from.</param>
 	/// <returns>The generated tree result.</returns>
-	TreeResult Generate(string rootPath);
+	TreeResult Generate(string? rootPath);
 }

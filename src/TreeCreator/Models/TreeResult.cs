@@ -1,4 +1,7 @@
-﻿namespace TreeCreator.Models;
+﻿using System;
+using System.Collections.Generic;
+
+namespace TreeCreator.Models;
 
 /// <summary>
 /// Represents the result of a directory tree generation operation.

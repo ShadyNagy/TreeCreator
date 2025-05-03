@@ -1,4 +1,7 @@
-﻿using TreeCreator.Interfaces;
+﻿using System;
+using System.IO;
+using System.Linq;
+using TreeCreator.Interfaces;
 using TreeCreator.Models;
 
 namespace TreeCreator;
@@ -45,7 +48,7 @@ public class DefaultTreeCreator : ITreeCreator
 	/// <returns>The generated tree result.</returns>
 	/// <exception cref="ArgumentException">Thrown when the specified path is invalid.</exception>
 	/// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
-	public TreeResult Generate(string rootPath)
+	public TreeResult Generate(string? rootPath)
 	{
 		if (string.IsNullOrWhiteSpace(rootPath))
 			throw new ArgumentException("Root path cannot be empty.", nameof(rootPath));
