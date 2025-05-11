@@ -22,6 +22,20 @@ public interface ITreeCreator
 	ITreeCreator ExcludeExtensions(params string[] extensions);
 
 	/// <summary>
+	/// Includes only the specified directories in the tree.
+	/// </summary>
+	/// <param name="directoryNames">The directory names to include.</param>
+	/// <returns>The current instance for method chaining.</returns>
+	ITreeCreator IncludeOnlyDirectories(params string[] directoryNames);
+
+	/// <summary>
+	/// Includes only the specified file extensions in the tree.
+	/// </summary>
+	/// <param name="extensions">The file extensions to include.</param>
+	/// <returns>The current instance for method chaining.</returns>
+	ITreeCreator IncludeOnlyExtensions(params string[] extensions);
+
+	/// <summary>
 	/// Generates a tree from the specified root path.
 	/// </summary>
 	/// <param name="rootPath">The root path to generate the tree from.</param>

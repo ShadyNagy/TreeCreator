@@ -42,6 +42,36 @@ public class DefaultTreeCreator : ITreeCreator
 	}
 
 	/// <summary>
+	/// Includes only the specified directories in the tree.
+	/// </summary>
+	/// <param name="directoryNames">The directory names to include.</param>
+	/// <returns>The current instance for method chaining.</returns>
+	public ITreeCreator IncludeOnlyDirectories(params string[] directoryNames)
+	{
+		foreach (var dir in directoryNames)
+		{
+			_options.IncludedDirectories.Add(dir);
+		}
+		return this;
+	}
+
+	/// <summary>
+	/// Includes only the specified file extensions in the tree.
+	/// </summary>
+	/// <param name="extensions">The file extensions to include.</param>
+	/// <returns>The current instance for method chaining.</returns>
+	public ITreeCreator IncludeOnlyExtensions(params string[] extensions)
+	{
+		foreach (var ext in extensions)
+		{
+			// Ensure the extension includes the dot
+			var formattedExt = ext.StartsWith(".") ? ext : $".{ext}";
+			_options.IncludedExtensions.Add(formattedExt);
+		}
+		return this;
+	}
+
+	/// <summary>
 	/// Generates a tree from the specified root path.
 	/// </summary>
 	/// <param name="rootPath">The root path to generate the tree from.</param>
@@ -65,33 +95,37 @@ public class DefaultTreeCreator : ITreeCreator
 	{
 		var dirInfo = new DirectoryInfo(path);
 
-		// Get all directories that aren't excluded
-		var directories = dirInfo.GetDirectories()
+		// Get directories based on include/exclude rules
+		var directories = dirInfo.GetDirectories();
+		var filteredDirectories = directories
 				.Where(d => !_options.ExcludedDirectories.Contains(d.Name))
+				.Where(d => _options.IncludedDirectories.Count == 0 || _options.IncludedDirectories.Contains(d.Name))
 				.OrderBy(d => d.Name)
 				.ToList();
 
-		// Get all files that don't have excluded extensions
-		var files = dirInfo.GetFiles()
+		// Get files based on include/exclude rules
+		var files = dirInfo.GetFiles();
+		var filteredFiles = files
 				.Where(f => !_options.ExcludedExtensions.Contains(f.Extension))
+				.Where(f => _options.IncludedExtensions.Count == 0 || _options.IncludedExtensions.Contains(f.Extension))
 				.OrderBy(f => f.Name)
 				.ToList();
 
 		// Process directories
-		for (int i = 0; i < directories.Count; i++)
+		for (int i = 0; i < filteredDirectories.Count; i++)
 		{
-			var dir = directories[i];
-			bool isLast = (i == directories.Count - 1) && (files.Count == 0);
+			var dir = filteredDirectories[i];
+			bool isLast = (i == filteredDirectories.Count - 1) && (filteredFiles.Count == 0);
 			result.AppendLine($"{indent}{(isLast ? "└── " : "├── ")}{dir.Name}/");
 			string newIndent = indent + (isLast ? "    " : "│   ");
 			ProcessDirectory(dir.FullName, result, newIndent);
 		}
 
 		// Process files
-		for (int i = 0; i < files.Count; i++)
+		for (int i = 0; i < filteredFiles.Count; i++)
 		{
-			var file = files[i];
-			bool isLast = (i == files.Count - 1);
+			var file = filteredFiles[i];
+			bool isLast = (i == filteredFiles.Count - 1);
 			result.AppendLine($"{indent}{(isLast ? "└── " : "├── ")}{file.Name}");
 		}
 	}
