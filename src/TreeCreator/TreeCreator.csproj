@@ -7,7 +7,6 @@
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 		<NuspecFile>../../TreeCreator.nuspec</NuspecFile>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	</PropertyGroup>
 	<ItemGroup>
 		<None Include="../../icon.png" Pack="true" Visible="false" PackagePath="/" />

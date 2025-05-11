@@ -31,7 +31,7 @@ dotnet add package TreeCreator
 ### PackageReference
 
 ```xml
-<PackageReference Include="TreeCreator" Version="1.0.2" />
+<PackageReference Include="TreeCreator" Version="1.0.3" />
 ```
 
 ## Quick Start
