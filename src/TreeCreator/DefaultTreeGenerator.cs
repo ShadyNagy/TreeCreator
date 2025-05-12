@@ -126,7 +126,7 @@ public class DefaultTreeCreator : ITreeCreator
 			foreach (var includedPath in _options.IncludedDirectories)
 			{
 				if (normalizedCurrentDir.EndsWith("/" + includedPath, StringComparison.OrdinalIgnoreCase) ||
-						normalizedCurrentDir.EndsWith(includedPath, StringComparison.OrdinalIgnoreCase))
+				    normalizedCurrentDir.EndsWith(includedPath, StringComparison.OrdinalIgnoreCase))
 				{
 					_includedPaths.Add(currentDir);
 					break;
@@ -146,18 +146,13 @@ public class DefaultTreeCreator : ITreeCreator
 				}
 			}
 
-			try
+			// Replace this try-catch block
+			if (TryGetDirectories(currentDir, out DirectoryInfo[] subdirectories))
 			{
-				foreach (var subDir in Directory.GetDirectories(currentDir))
+				foreach (var subDir in subdirectories)
 				{
-					directories.Enqueue(subDir);
+					directories.Enqueue(subDir.FullName);
 				}
-			}
-			catch (UnauthorizedAccessException)
-			{
-			}
-			catch (Exception)
-			{
 			}
 		}
 	}
@@ -216,18 +211,23 @@ public class DefaultTreeCreator : ITreeCreator
 			return;
 		}
 
-		var directories = dirInfo.GetDirectories();
-		var filteredDirectories = directories
-						.Where(d => !_options.ExcludedDirectories.Contains(d.Name))
-						.OrderBy(d => d.Name)
-						.ToList();
+		// Use our new helper methods
+		DirectoryInfo[] directories = Array.Empty<DirectoryInfo>();
+		TryGetDirectories(path, out directories);
 
-		var files = dirInfo.GetFiles();
+		var filteredDirectories = directories
+			.Where(d => !_options.ExcludedDirectories.Contains(d.Name))
+			.OrderBy(d => d.Name)
+			.ToList();
+
+		FileInfo[] files = Array.Empty<FileInfo>();
+		TryGetFiles(path, out files);
+
 		var filteredFiles = files
-						.Where(f => !_options.ExcludedExtensions.Contains(f.Extension))
-						.Where(f => _options.IncludedExtensions.Count == 0 || _options.IncludedExtensions.Contains(f.Extension))
-						.OrderBy(f => f.Name)
-						.ToList();
+			.Where(f => !_options.ExcludedExtensions.Contains(f.Extension))
+			.Where(f => _options.IncludedExtensions.Count == 0 || _options.IncludedExtensions.Contains(f.Extension))
+			.OrderBy(f => f.Name)
+			.ToList();
 
 		for (int i = 0; i < filteredDirectories.Count; i++)
 		{
@@ -249,6 +249,74 @@ public class DefaultTreeCreator : ITreeCreator
 			var file = filteredFiles[i];
 			bool isLast = (i == filteredFiles.Count - 1);
 			result.AppendLine($"{indent}{(isLast ? "└── " : "├── ")}{file.Name}");
+		}
+	}
+
+	/// <summary>
+	/// Safely attempts to get directories, handling long paths.
+	/// </summary>
+	/// <param name="path">The directory path.</param>
+	/// <param name="directories">The retrieved directories if successful.</param>
+	/// <returns>True if successful, false otherwise.</returns>
+	private bool TryGetDirectories(string path, out DirectoryInfo[] directories)
+	{
+		try
+		{
+			// Handle long paths by using \\?\ prefix for extremely long paths on Windows
+			string longPathSafePath = path.Length > 250 && !path.StartsWith(@"\\?\") && Path.DirectorySeparatorChar == '\\'
+					? @"\\?\" + path
+					: path;
+
+			var dir = new DirectoryInfo(longPathSafePath);
+			directories = dir.GetDirectories();
+			return true;
+		}
+		catch (PathTooLongException ex)
+		{
+			// Optionally log the exception
+			Console.WriteLine($"Path too long: {path}. Error: {ex.Message}");
+			directories = Array.Empty<DirectoryInfo>();
+			return false;
+		}
+		catch (Exception ex)
+		{
+			// Optionally log other exceptions
+			directories = Array.Empty<DirectoryInfo>();
+			return false;
+		}
+	}
+
+	/// <summary>
+	/// Safely attempts to get files, handling long paths.
+	/// </summary>
+	/// <param name="path">The directory path.</param>
+	/// <param name="files">The retrieved files if successful.</param>
+	/// <returns>True if successful, false otherwise.</returns>
+	private bool TryGetFiles(string path, out FileInfo[] files)
+	{
+		try
+		{
+			// Handle long paths by using \\?\ prefix for extremely long paths on Windows
+			string longPathSafePath = path.Length > 250 && !path.StartsWith(@"\\?\") && Path.DirectorySeparatorChar == '\\'
+					? @"\\?\" + path
+					: path;
+
+			var dir = new DirectoryInfo(longPathSafePath);
+			files = dir.GetFiles();
+			return true;
+		}
+		catch (PathTooLongException ex)
+		{
+			// Optionally log the exception
+			Console.WriteLine($"Path too long: {path}. Error: {ex.Message}");
+			files = Array.Empty<FileInfo>();
+			return false;
+		}
+		catch (Exception ex)
+		{
+			// Optionally log other exceptions
+			files = Array.Empty<FileInfo>();
+			return false;
 		}
 	}
 }
