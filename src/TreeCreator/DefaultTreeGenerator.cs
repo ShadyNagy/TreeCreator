@@ -46,13 +46,15 @@ public class DefaultTreeCreator : ITreeCreator
 	/// <summary>
 	/// Includes only the specified directories and their subdirectories in the tree.
 	/// </summary>
-	/// <param name="directoryNames">The directory names to include.</param>
+	/// <param name="directoryPaths">The directory paths to include.</param>
 	/// <returns>The current instance for method chaining.</returns>
-	public ITreeCreator IncludeOnlyDirectories(params string[] directoryNames)
+	public ITreeCreator IncludeOnlyDirectories(params string[] directoryPaths)
 	{
-		foreach (var dir in directoryNames)
+		foreach (var dirPath in directoryPaths)
 		{
-			_options.IncludedDirectories.Add(dir);
+			// Normalize the path to use standard directory separators
+			string normalizedPath = NormalizePath(dirPath);
+			_options.IncludedDirectories.Add(normalizedPath);
 		}
 		return this;
 	}
@@ -88,11 +90,10 @@ public class DefaultTreeCreator : ITreeCreator
 		if (!Directory.Exists(rootPath))
 			throw new DirectoryNotFoundException($"Directory '{rootPath}' does not exist.");
 
-		// If we have included directories, find their full paths first
 		if (_options.IncludedDirectories.Count > 0)
 		{
 			_includedPaths.Clear();
-			FindIncludedDirectoryPaths(rootPath);
+			FindMatchingPaths(rootPath);
 		}
 
 		var result = new TreeResult(rootPath);
@@ -100,76 +101,139 @@ public class DefaultTreeCreator : ITreeCreator
 		return result;
 	}
 
-	private void FindIncludedDirectoryPaths(string rootPath)
+	private string NormalizePath(string path)
 	{
-		var dirInfo = new DirectoryInfo(rootPath);
+		return path.Replace('\\', '/').TrimEnd('/');
+	}
 
-		// Check if this directory should be included
-		if (_options.IncludedDirectories.Contains(dirInfo.Name))
+	private void FindMatchingPaths(string rootPath)
+	{
+		Queue<string> directories = new Queue<string>();
+		directories.Enqueue(rootPath);
+
+		while (directories.Count > 0)
 		{
-			_includedPaths.Add(dirInfo.FullName);
-			return; // No need to search subdirectories as they'll be included anyway
+			string currentDir = directories.Dequeue();
+			string normalizedCurrentDir = NormalizePath(currentDir);
+
+			var dirInfo = new DirectoryInfo(currentDir);
+			if (_options.IncludedDirectories.Contains(dirInfo.Name))
+			{
+				_includedPaths.Add(currentDir);
+				continue;
+			}
+
+			foreach (var includedPath in _options.IncludedDirectories)
+			{
+				if (normalizedCurrentDir.EndsWith("/" + includedPath, StringComparison.OrdinalIgnoreCase) ||
+						normalizedCurrentDir.EndsWith(includedPath, StringComparison.OrdinalIgnoreCase))
+				{
+					_includedPaths.Add(currentDir);
+					break;
+				}
+
+				string[] includedPathParts = includedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+				if (includedPathParts.Length > 1)
+				{
+					string[] currentPathParts = normalizedCurrentDir.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+					bool isMatch = IsPathMatch(currentPathParts, includedPathParts);
+					if (isMatch)
+					{
+						_includedPaths.Add(currentDir);
+						break;
+					}
+				}
+			}
+
+			try
+			{
+				foreach (var subDir in Directory.GetDirectories(currentDir))
+				{
+					directories.Enqueue(subDir);
+				}
+			}
+			catch (UnauthorizedAccessException)
+			{
+			}
+			catch (Exception)
+			{
+			}
+		}
+	}
+
+	private bool IsPathMatch(string[] pathParts, string[] includePathParts)
+	{
+		if (includePathParts.Length == 0)
+			return false;
+
+		int startIndex = -1;
+		for (int i = 0; i < pathParts.Length; i++)
+		{
+			if (string.Equals(pathParts[i], includePathParts[0], StringComparison.OrdinalIgnoreCase))
+			{
+				startIndex = i;
+				break;
+			}
 		}
 
-		// Recursively search in subdirectories
-		foreach (var subDir in dirInfo.GetDirectories())
+		if (startIndex == -1 || startIndex + includePathParts.Length > pathParts.Length)
+			return false;
+
+		for (int i = 0; i < includePathParts.Length; i++)
 		{
-			FindIncludedDirectoryPaths(subDir.FullName);
+			if (!string.Equals(pathParts[startIndex + i], includePathParts[i], StringComparison.OrdinalIgnoreCase))
+				return false;
 		}
+
+		return true;
 	}
 
 	private bool ShouldIncludeDirectory(DirectoryInfo dirInfo)
 	{
-		// If no directories are specifically included, include all directories except excluded ones
 		if (_options.IncludedDirectories.Count == 0)
 		{
 			return !_options.ExcludedDirectories.Contains(dirInfo.Name);
 		}
 
-		// If this directory is in the included list, include it
 		if (_options.IncludedDirectories.Contains(dirInfo.Name))
 		{
 			return true;
 		}
 
-		// If any ancestor of this directory is in the included paths, include it
 		string currentPath = dirInfo.FullName;
 		return _includedPaths.Any(includedPath =>
-				currentPath.StartsWith(includedPath, StringComparison.OrdinalIgnoreCase));
+						currentPath.StartsWith(includedPath, StringComparison.OrdinalIgnoreCase) ||
+						includedPath.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase));
 	}
 
 	private void ProcessDirectory(string path, TreeResult result, string indent, bool isRootLevel)
 	{
 		var dirInfo = new DirectoryInfo(path);
 
-		// Skip this directory and its contents if it's not the root level and should not be included
 		if (!isRootLevel && !ShouldIncludeDirectory(dirInfo))
 		{
 			return;
 		}
 
-		// Get directories
 		var directories = dirInfo.GetDirectories();
 		var filteredDirectories = directories
-				.Where(d => !_options.ExcludedDirectories.Contains(d.Name))
-				.OrderBy(d => d.Name)
-				.ToList();
+						.Where(d => !_options.ExcludedDirectories.Contains(d.Name))
+						.OrderBy(d => d.Name)
+						.ToList();
 
-		// Get files based on include/exclude rules
 		var files = dirInfo.GetFiles();
 		var filteredFiles = files
-				.Where(f => !_options.ExcludedExtensions.Contains(f.Extension))
-				.Where(f => _options.IncludedExtensions.Count == 0 || _options.IncludedExtensions.Contains(f.Extension))
-				.OrderBy(f => f.Name)
-				.ToList();
+						.Where(f => !_options.ExcludedExtensions.Contains(f.Extension))
+						.Where(f => _options.IncludedExtensions.Count == 0 || _options.IncludedExtensions.Contains(f.Extension))
+						.OrderBy(f => f.Name)
+						.ToList();
 
-		// Process directories
 		for (int i = 0; i < filteredDirectories.Count; i++)
 		{
 			var dir = filteredDirectories[i];
 			bool isLast = (i == filteredDirectories.Count - 1) && (filteredFiles.Count == 0);
 
-			// Check if we should include this directory or its subdirectories
 			bool shouldIncludeThisDir = ShouldIncludeDirectory(dir);
 
 			if (shouldIncludeThisDir)
@@ -180,7 +244,6 @@ public class DefaultTreeCreator : ITreeCreator
 			}
 		}
 
-		// Process files
 		for (int i = 0; i < filteredFiles.Count; i++)
 		{
 			var file = filteredFiles[i];
