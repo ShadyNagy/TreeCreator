@@ -21,6 +21,8 @@ public class TreeResult
 		_rootPath = rootPath ?? throw new ArgumentNullException(nameof(rootPath));
 		if (isPrintRoot)
 			_lines.Add($"{_rootPath}/");
+		else
+			_lines.Add("/");
 	}
 
 	/// <summary>
