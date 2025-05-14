@@ -79,10 +79,11 @@ public class DefaultTreeCreator : ITreeCreator
 	/// Generates a tree from the specified root path.
 	/// </summary>
 	/// <param name="rootPath">The root path to generate the tree from.</param>
+	/// <param name="isPrintRoot">False to not print the root in the tree.</param>
 	/// <returns>The generated tree result.</returns>
 	/// <exception cref="ArgumentException">Thrown when the specified path is invalid.</exception>
 	/// <exception cref="DirectoryNotFoundException">Thrown when the specified directory does not exist.</exception>
-	public TreeResult Generate(string? rootPath)
+	public TreeResult Generate(string? rootPath, bool isPrintRoot = true)
 	{
 		if (string.IsNullOrWhiteSpace(rootPath))
 			throw new ArgumentException("Root path cannot be empty.", nameof(rootPath));
@@ -96,7 +97,7 @@ public class DefaultTreeCreator : ITreeCreator
 			FindMatchingPaths(rootPath);
 		}
 
-		var result = new TreeResult(rootPath);
+		var result = new TreeResult(rootPath, isPrintRoot);
 		ProcessDirectory(rootPath, result, "", true);
 		return result;
 	}

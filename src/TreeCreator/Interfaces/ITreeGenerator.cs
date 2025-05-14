@@ -39,6 +39,7 @@ public interface ITreeCreator
 	/// Generates a tree from the specified root path.
 	/// </summary>
 	/// <param name="rootPath">The root path to generate the tree from.</param>
+	/// <param name="isPrintRoot">False to not print the root in the tree.</param>
 	/// <returns>The generated tree result.</returns>
-	TreeResult Generate(string? rootPath);
+	TreeResult Generate(string? rootPath, bool isPrintRoot = true);
 }

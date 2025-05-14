@@ -15,10 +15,12 @@ public class TreeResult
 	/// Initializes a new instance of the <see cref="TreeResult"/> class.
 	/// </summary>
 	/// <param name="rootPath">The root path of the directory tree.</param>
-	public TreeResult(string rootPath)
+	/// <param name="isPrintRoot">False to not print the root in the tree.</param>
+	public TreeResult(string rootPath, bool isPrintRoot)
 	{
 		_rootPath = rootPath ?? throw new ArgumentNullException(nameof(rootPath));
-		_lines.Add($"{_rootPath}/");
+		if (isPrintRoot)
+			_lines.Add($"{_rootPath}/");
 	}
 
 	/// <summary>
