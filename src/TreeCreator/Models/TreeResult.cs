@@ -26,16 +26,20 @@ public class TreeResult
 	{
 		_rootPath = rootPath ?? throw new ArgumentNullException(nameof(rootPath));
 
+		// Normalize root path
+		_rootPath = Path.GetFullPath(_rootPath);
+
 		if (isPrintRoot)
 			_lines.Add($"{_rootPath}/");
 		else
 			_lines.Add("/");
 
-		string rootName = Path.GetFileName(rootPath);
-		if (string.IsNullOrEmpty(rootName))
-			rootName = rootPath;
+		// Create the root TreeItem
+		string rootName = Path.GetFileName(_rootPath);
+		if (string.IsNullOrEmpty(rootName)) // Handle root drives
+			rootName = _rootPath;
 
-		Root = new TreeItem(rootName, rootPath, true, true);
+		Root = new TreeItem(rootName, _rootPath, ".", true, true);
 	}
 
 	/// <summary>
@@ -56,7 +60,45 @@ public class TreeResult
 	public override string ToString() => string.Join(Environment.NewLine, _lines);
 
 	/// <summary>
-	/// Creates or gets an item in the tree structure.
+	/// Converts an absolute path to a path relative to the root directory.
+	/// </summary>
+	/// <param name="path">The absolute path to convert.</param>
+	/// <returns>The relative path.</returns>
+	public string GetRelativePath(string path)
+	{
+		// Ensure the path uses the correct directory separator
+		path = Path.GetFullPath(path);
+
+		// Handle case where path is the root
+		if (string.Equals(path, _rootPath, StringComparison.OrdinalIgnoreCase))
+			return ".";
+
+		// Create relative path
+		if (path.StartsWith(_rootPath, StringComparison.OrdinalIgnoreCase))
+		{
+			string relativePath = path.Substring(_rootPath.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+			return relativePath.Length == 0 ? "." : relativePath;
+		}
+
+		// If path is not under the root, use Path.GetRelativePath
+		return Path.GetRelativePath(_rootPath, path);
+	}
+
+	/// <summary>
+	/// Converts a relative path to an absolute path based on the root directory.
+	/// </summary>
+	/// <param name="relativePath">The relative path to convert.</param>
+	/// <returns>The absolute path.</returns>
+	public string GetAbsolutePath(string relativePath)
+	{
+		if (string.IsNullOrEmpty(relativePath) || relativePath == ".")
+			return _rootPath;
+
+		return Path.GetFullPath(Path.Combine(_rootPath, relativePath));
+	}
+
+	/// <summary>
+	/// Creates or gets an item in the tree structure using an absolute path.
 	/// </summary>
 	/// <param name="path">The full path of the item.</param>
 	/// <param name="isFolder">Whether this item is a folder.</param>
@@ -64,10 +106,12 @@ public class TreeResult
 	/// <returns>The created or existing tree item.</returns>
 	public TreeItem CreateOrGetItem(string path, bool isFolder, bool canExpand)
 	{
+		path = Path.GetFullPath(path);
+
 		if (string.Equals(path, _rootPath, StringComparison.OrdinalIgnoreCase))
 			return Root;
 
-		path = path.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+		string relativePath = GetRelativePath(path);
 
 		string? parentPath = Path.GetDirectoryName(path);
 		if (string.IsNullOrEmpty(parentPath))
@@ -87,8 +131,21 @@ public class TreeResult
 		if (existingItem != null)
 			return existingItem;
 
-		var newItem = new TreeItem(name, path, isFolder, canExpand);
+		var newItem = new TreeItem(name, path, relativePath, isFolder, canExpand);
 		parent.AddChild(newItem);
 		return newItem;
+	}
+
+	/// <summary>
+	/// Creates or gets an item in the tree structure using a relative path.
+	/// </summary>
+	/// <param name="relativePath">The relative path of the item with respect to the root.</param>
+	/// <param name="isFolder">Whether this item is a folder.</param>
+	/// <param name="canExpand">Whether this item can be expanded.</param>
+	/// <returns>The created or existing tree item.</returns>
+	public TreeItem CreateOrGetItemByRelativePath(string relativePath, bool isFolder, bool canExpand)
+	{
+		string absolutePath = GetAbsolutePath(relativePath);
+		return CreateOrGetItem(absolutePath, isFolder, canExpand);
 	}
 }

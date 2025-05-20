@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace TreeCreator.Models;
 
@@ -20,6 +17,11 @@ public class TreeItem
 	/// Gets the full path of the item starting from the root.
 	/// </summary>
 	public string FullPath { get; }
+
+	/// <summary>
+	/// Gets the relative path of the item with respect to the root directory.
+	/// </summary>
+	public string RelativePath { get; }
 
 	/// <summary>
 	/// Gets a value indicating whether this item is a folder.
@@ -41,12 +43,14 @@ public class TreeItem
 	/// </summary>
 	/// <param name="name">The name of the item.</param>
 	/// <param name="fullPath">The full path of the item.</param>
+	/// <param name="relativePath">The relative path of the item from the root.</param>
 	/// <param name="isFolder">Whether this item is a folder.</param>
 	/// <param name="isExpand">Whether this item can be expanded.</param>
-	public TreeItem(string name, string fullPath, bool isFolder, bool isExpand)
+	public TreeItem(string name, string fullPath, string relativePath, bool isFolder, bool isExpand)
 	{
 		Name = name ?? throw new ArgumentNullException(nameof(name));
 		FullPath = fullPath ?? throw new ArgumentNullException(nameof(fullPath));
+		RelativePath = relativePath ?? throw new ArgumentNullException(nameof(relativePath));
 		IsFolder = isFolder;
 		IsExpand = isExpand;
 	}

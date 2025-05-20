@@ -1,8 +1,4 @@
-﻿using System;
-using System.IO;
-using TreeCreator;
-
-namespace TreeCreator.App
+﻿namespace TreeCreator.App
 {
 	internal class Program
 	{

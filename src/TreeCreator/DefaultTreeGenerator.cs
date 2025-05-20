@@ -52,7 +52,6 @@ public class DefaultTreeCreator : ITreeCreator
 	{
 		foreach (var dirPath in directoryPaths)
 		{
-			// Normalize the path to use standard directory separators
 			string normalizedPath = NormalizePath(dirPath);
 			_options.IncludedDirectories.Add(normalizedPath);
 		}
@@ -238,6 +237,7 @@ public class DefaultTreeCreator : ITreeCreator
 				string newIndent = indent + (isLast ? "    " : "│   ");
 
 				bool canExpand = DirectoryHasVisibleContents(dir);
+				string relativePath = result.GetRelativePath(dir.FullName);
 				result.CreateOrGetItem(dir.FullName, true, canExpand);
 
 				ProcessDirectory(dir.FullName, result, newIndent, false);
@@ -251,6 +251,7 @@ public class DefaultTreeCreator : ITreeCreator
 
 			result.AppendLine($"{indent}{(isLast ? "└── " : "├── ")}{file.Name}");
 
+			string relativeFilePath = result.GetRelativePath(file.FullName);
 			result.CreateOrGetItem(file.FullName, false, false);
 		}
 	}
