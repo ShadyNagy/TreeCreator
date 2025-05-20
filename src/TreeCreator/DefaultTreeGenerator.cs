@@ -68,7 +68,6 @@ public class DefaultTreeCreator : ITreeCreator
 	{
 		foreach (var ext in extensions)
 		{
-			// Ensure the extension includes the dot
 			var formattedExt = ext.StartsWith(".") ? ext : $".{ext}";
 			_options.IncludedExtensions.Add(formattedExt);
 		}
@@ -127,7 +126,7 @@ public class DefaultTreeCreator : ITreeCreator
 			foreach (var includedPath in _options.IncludedDirectories)
 			{
 				if (normalizedCurrentDir.EndsWith("/" + includedPath, StringComparison.OrdinalIgnoreCase) ||
-				    normalizedCurrentDir.EndsWith(includedPath, StringComparison.OrdinalIgnoreCase))
+						normalizedCurrentDir.EndsWith(includedPath, StringComparison.OrdinalIgnoreCase))
 				{
 					_includedPaths.Add(currentDir);
 					break;
@@ -147,7 +146,6 @@ public class DefaultTreeCreator : ITreeCreator
 				}
 			}
 
-			// Replace this try-catch block
 			if (TryGetDirectories(currentDir, out DirectoryInfo[] subdirectories))
 			{
 				foreach (var subDir in subdirectories)
@@ -199,8 +197,8 @@ public class DefaultTreeCreator : ITreeCreator
 
 		string currentPath = dirInfo.FullName;
 		return _includedPaths.Any(includedPath =>
-						currentPath.StartsWith(includedPath, StringComparison.OrdinalIgnoreCase) ||
-						includedPath.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase));
+										currentPath.StartsWith(includedPath, StringComparison.OrdinalIgnoreCase) ||
+										includedPath.StartsWith(currentPath, StringComparison.OrdinalIgnoreCase));
 	}
 
 	private void ProcessDirectory(string path, TreeResult result, string indent, bool isRootLevel)
@@ -212,23 +210,20 @@ public class DefaultTreeCreator : ITreeCreator
 			return;
 		}
 
-		// Use our new helper methods
-		DirectoryInfo[] directories = Array.Empty<DirectoryInfo>();
-		TryGetDirectories(path, out directories);
+		TryGetDirectories(path, out var directories);
 
 		var filteredDirectories = directories
-			.Where(d => !_options.ExcludedDirectories.Contains(d.Name))
-			.OrderBy(d => d.Name)
-			.ToList();
+				.Where(d => !_options.ExcludedDirectories.Contains(d.Name))
+				.OrderBy(d => d.Name)
+				.ToList();
 
-		FileInfo[] files = Array.Empty<FileInfo>();
-		TryGetFiles(path, out files);
+		TryGetFiles(path, out var files);
 
 		var filteredFiles = files
-			.Where(f => !_options.ExcludedExtensions.Contains(f.Extension))
-			.Where(f => _options.IncludedExtensions.Count == 0 || _options.IncludedExtensions.Contains(f.Extension))
-			.OrderBy(f => f.Name)
-			.ToList();
+				.Where(f => !_options.ExcludedExtensions.Contains(f.Extension))
+				.Where(f => _options.IncludedExtensions.Count == 0 || _options.IncludedExtensions.Contains(f.Extension))
+				.OrderBy(f => f.Name)
+				.ToList();
 
 		for (int i = 0; i < filteredDirectories.Count; i++)
 		{
@@ -241,6 +236,10 @@ public class DefaultTreeCreator : ITreeCreator
 			{
 				result.AppendLine($"{indent}{(isLast ? "└── " : "├── ")}{dir.Name}/");
 				string newIndent = indent + (isLast ? "    " : "│   ");
+
+				bool canExpand = DirectoryHasVisibleContents(dir);
+				result.CreateOrGetItem(dir.FullName, true, canExpand);
+
 				ProcessDirectory(dir.FullName, result, newIndent, false);
 			}
 		}
@@ -249,8 +248,39 @@ public class DefaultTreeCreator : ITreeCreator
 		{
 			var file = filteredFiles[i];
 			bool isLast = (i == filteredFiles.Count - 1);
+
 			result.AppendLine($"{indent}{(isLast ? "└── " : "├── ")}{file.Name}");
+
+			result.CreateOrGetItem(file.FullName, false, false);
 		}
+	}
+
+	/// <summary>
+	/// Determines if a directory has any visible contents according to the current filtering options.
+	/// </summary>
+	/// <param name="dir">The directory to check.</param>
+	/// <returns>True if the directory has visible contents, false otherwise.</returns>
+	private bool DirectoryHasVisibleContents(DirectoryInfo dir)
+	{
+		if (TryGetFiles(dir.FullName, out var files))
+		{
+			if (files.Any(f =>
+					!_options.ExcludedExtensions.Contains(f.Extension) &&
+					(_options.IncludedExtensions.Count == 0 || _options.IncludedExtensions.Contains(f.Extension))))
+			{
+				return true;
+			}
+		}
+
+		if (TryGetDirectories(dir.FullName, out var subdirs))
+		{
+			if (subdirs.Any(d => ShouldIncludeDirectory(d)))
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/// <summary>
@@ -263,10 +293,9 @@ public class DefaultTreeCreator : ITreeCreator
 	{
 		try
 		{
-			// Handle long paths by using \\?\ prefix for extremely long paths on Windows
 			string longPathSafePath = path.Length > 250 && !path.StartsWith(@"\\?\") && Path.DirectorySeparatorChar == '\\'
-					? @"\\?\" + path
-					: path;
+							? @"\\?\" + path
+							: path;
 
 			var dir = new DirectoryInfo(longPathSafePath);
 			directories = dir.GetDirectories();
@@ -274,14 +303,12 @@ public class DefaultTreeCreator : ITreeCreator
 		}
 		catch (PathTooLongException ex)
 		{
-			// Optionally log the exception
 			Console.WriteLine($"Path too long: {path}. Error: {ex.Message}");
 			directories = Array.Empty<DirectoryInfo>();
 			return false;
 		}
 		catch (Exception ex)
 		{
-			// Optionally log other exceptions
 			directories = Array.Empty<DirectoryInfo>();
 			return false;
 		}
@@ -297,10 +324,9 @@ public class DefaultTreeCreator : ITreeCreator
 	{
 		try
 		{
-			// Handle long paths by using \\?\ prefix for extremely long paths on Windows
 			string longPathSafePath = path.Length > 250 && !path.StartsWith(@"\\?\") && Path.DirectorySeparatorChar == '\\'
-					? @"\\?\" + path
-					: path;
+							? @"\\?\" + path
+							: path;
 
 			var dir = new DirectoryInfo(longPathSafePath);
 			files = dir.GetFiles();
@@ -308,14 +334,12 @@ public class DefaultTreeCreator : ITreeCreator
 		}
 		catch (PathTooLongException ex)
 		{
-			// Optionally log the exception
 			Console.WriteLine($"Path too long: {path}. Error: {ex.Message}");
 			files = Array.Empty<FileInfo>();
 			return false;
 		}
 		catch (Exception ex)
 		{
-			// Optionally log other exceptions
 			files = Array.Empty<FileInfo>();
 			return false;
 		}
