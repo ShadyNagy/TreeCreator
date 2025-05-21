@@ -2,7 +2,6 @@ name: Build, Test and Publish
 on:
   push:
     branches: [ main, master ]
-    tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
 env:
@@ -22,6 +21,33 @@ jobs:
       with:
         dotnet-version: 8.0.x
     
+    - name: Extract version from NuSpec
+      id: extract_version
+      run: |
+        # Find the NuSpec file
+        NUSPEC_PATH=$(find . -name "TreeCreator.nuspec" -type f)
+        if [ -z "$NUSPEC_PATH" ]; then
+          echo "NuSpec file not found"
+          exit 1
+        fi
+        
+        # Extract version from NuSpec
+        VERSION=$(grep -oP '<version>\K[^<]+' "$NUSPEC_PATH")
+        echo "Extracted version: $VERSION"
+        echo "PACKAGE_VERSION=$VERSION" >> $GITHUB_ENV
+        
+        # Check if tag exists for this version
+        git fetch --tags
+        if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+          echo "Tag v$VERSION already exists"
+          echo "TAG_EXISTS=true" >> $GITHUB_ENV
+          echo "IS_RELEASE=true" >> $GITHUB_ENV
+        else
+          echo "Tag v$VERSION does not exist yet"
+          echo "TAG_EXISTS=false" >> $GITHUB_ENV
+          echo "IS_RELEASE=false" >> $GITHUB_ENV
+        fi
+    
     - name: Restore dependencies
       run: dotnet restore
     
@@ -31,55 +57,24 @@ jobs:
     - name: Test
       run: dotnet test --configuration Release --no-build --verbosity normal
     
-    - name: Extract version
-      if: github.event_name == 'push'
-      id: version
+    - name: Create tag if needed
+      if: github.event_name == 'push' && env.TAG_EXISTS == 'false' && github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       run: |
-        if [[ $GITHUB_REF == refs/tags/v* ]]; then
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "IS_RELEASE=true" >> $GITHUB_ENV
-        else
-          VERSION=0.0.0-ci-$GITHUB_RUN_NUMBER
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "IS_RELEASE=false" >> $GITHUB_ENV
-        fi
-        echo "Version: $VERSION"
-    
-    - name: Update NuSpec version
-      if: github.event_name == 'push'
-      run: |
-        if [ -f "TreeCreator.nuspec" ]; then
-          echo "Updating NuSpec version to $VERSION"
-          sed -i "s/<version>.*<\/version>/<version>$VERSION<\/version>/" TreeCreator.nuspec
-        else
-          echo "NuSpec file not found at root location, looking for it"
-          find . -name "TreeCreator.nuspec" -type f
-          NUSPEC_PATH=$(find . -name "TreeCreator.nuspec" -type f)
-          if [ -n "$NUSPEC_PATH" ]; then
-            echo "Found NuSpec at $NUSPEC_PATH"
-            sed -i "s/<version>.*<\/version>/<version>$VERSION<\/version>/" "$NUSPEC_PATH"
-          else
-            echo "NuSpec file not found in repository"
-            exit 1
-          fi
-        fi
+        # Configure Git
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        
+        # Create and push tag
+        echo "Creating tag v$PACKAGE_VERSION"
+        git tag "v$PACKAGE_VERSION"
+        git push origin "v$PACKAGE_VERSION"
+        
+        echo "IS_RELEASE=true" >> $GITHUB_ENV
     
     - name: Pack
       if: github.event_name == 'push'
       run: |
-        # Use nuget pack with the nuspec file directly
-        if [ -f "TreeCreator.nuspec" ]; then
-          dotnet pack src/TreeCreator/TreeCreator.csproj --configuration Release -p:PackageVersion=${{ env.VERSION }} --no-build -o ./packages
-        else
-          NUSPEC_PATH=$(find . -name "TreeCreator.nuspec" -type f)
-          if [ -n "$NUSPEC_PATH" ]; then
-            dotnet pack src/TreeCreator/TreeCreator.csproj --configuration Release -p:PackageVersion=${{ env.VERSION }} --no-build -o ./packages
-          else
-            echo "NuSpec file not found, cannot package"
-            exit 1
-          fi
-        fi
+        dotnet pack src/TreeCreator/TreeCreator.csproj --configuration Release -p:PackageVersion=${{ env.PACKAGE_VERSION }} --no-build -o ./packages
     
     - name: Push to NuGet
       if: github.event_name == 'push' && env.IS_RELEASE == 'true'
@@ -93,12 +88,13 @@ jobs:
         path: ./packages/*.nupkg
     
     - name: Create GitHub Release
-      if: github.event_name == 'push' && env.IS_RELEASE == 'true'
+      if: github.event_name == 'push' && env.IS_RELEASE == 'true' && env.TAG_EXISTS == 'false'
       uses: softprops/action-gh-release@v1
       with:
         files: ./packages/*.nupkg
-        name: Release v${{ env.VERSION }}
+        name: Release v${{ env.PACKAGE_VERSION }}
         body: |
-          Release of version ${{ env.VERSION }}
+          Release of version ${{ env.PACKAGE_VERSION }}
         draft: false
         prerelease: false
+        tag_name: v${{ env.PACKAGE_VERSION }}
