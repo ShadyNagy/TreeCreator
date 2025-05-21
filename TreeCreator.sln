@@ -17,6 +17,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TreeCreator.UnitTests", "te
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A3C031F3-FEE3-41B8-91DD-CBAEDAF3E66F}"
 	ProjectSection(SolutionItems) = preProject
+		.github\workflows\ci-cd.yml = .github\workflows\ci-cd.yml
 		README.md = README.md
 		TreeCreator.nuspec = TreeCreator.nuspec
 	EndProjectSection

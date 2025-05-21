@@ -1,0 +1,87 @@
+name: Build, Test and Publish
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    
+    - name: Test
+      run: dotnet test --configuration Release --no-build --verbosity normal
+    
+    - name: Extract version
+      if: github.event_name == 'push'
+      id: version
+      run: |
+        if [[ $GITHUB_REF == refs/tags/v* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "IS_RELEASE=true" >> $GITHUB_ENV
+        else
+          VERSION=0.0.0-ci-$GITHUB_RUN_NUMBER
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "IS_RELEASE=false" >> $GITHUB_ENV
+        fi
+        echo "Version: $VERSION"
+    
+    - name: Update NuSpec version
+      if: github.event_name == 'push'
+      run: |
+        if [ -f "TreeCreator.nuspec" ]; then
+          echo "Updating NuSpec version to $VERSION"
+          sed -i "s/<version>.*<\/version>/<version>$VERSION<\/version>/" TreeCreator.nuspec
+        else
+          echo "NuSpec file not found at expected location"
+          exit 1
+        fi
+    
+    - name: Pack
+      if: github.event_name == 'push'
+      run: dotnet pack src/TreeCreator/TreeCreator.csproj --configuration Release -p:PackageVersion=${{ env.VERSION }} --no-build -o ./packages
+    
+    - name: Push to NuGet
+      if: github.event_name == 'push' && env.IS_RELEASE == 'true'
+      run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+    
+    - name: Upload NuGet package as artifact
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v3
+      with:
+        name: nuget-package
+        path: ./packages/*.nupkg
+    
+    - name: Create GitHub Release
+      if: github.event_name == 'push' && env.IS_RELEASE == 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ./packages/*.nupkg
+        name: Release v${{ env.VERSION }}
+        body: |
+          Release of version ${{ env.VERSION }}
+        draft: false
+        prerelease: false
