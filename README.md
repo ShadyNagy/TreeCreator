@@ -1,6 +1,7 @@
 ﻿# TreeCreator
 
 [![NuGet](https://img.shields.io/nuget/v/TreeCreator.svg)](https://www.nuget.org/packages/TreeCreator/)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/ShadyNagy/TreeCreator/.github%2Fworkflows%2Fci-cd.yml)](https://github.com/ShadyNagy/TreeCreator/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A flexible and powerful .NET library for generating directory tree representations with advanced filtering capabilities. Similar to the classic `tree` command-line utility but with more configuration options and a fluent API.
